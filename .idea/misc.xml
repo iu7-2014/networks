@@ -20,10 +20,8 @@
     </entry>
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.3.2 (/usr/bin/python3.3)" project-jdk-type="Python SDK" />
-  <component name="PyConsoleOptionsProvider">
-    <option name="myPythonConsoleState">
-      <console-settings />
-    </option>
+  <component name="UnicodeBrowser">
+    <option name="fontName" value="Source Code Pro" />
   </component>
 </project>
 
