@@ -55,4 +55,9 @@ target/
 
 # virtualenv
 bin/
+
+# PyQt
+*_ui.py
+
+# repository specific
 image/
