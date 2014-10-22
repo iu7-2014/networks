@@ -2,16 +2,19 @@
 import json
 import hashlib
 import logging
-import sys
 import time
+import fcntl
+import struct
 
 import zmq
+
 
 class Configuration:
     udp_broadcast_ip = "255.255.255.255"
     udp_presence_message = b"rc client"
     udp_respond_message = b"rc server"
     refresh_server_list_counts = 5
+
 
 class Client:
     def __setup_udp(self):
@@ -29,17 +32,44 @@ class Client:
         self.__poller = zmq.Poller()
         self.__poller.register(self.__zmq_socket, zmq.POLLIN)
 
+    def __get_ip(self):
+        def get_interface_ip(ifname, s):
+            return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
+                                    ifname[:15].encode("utf-8")))[20:24])
+
+        ip = socket.gethostbyname(socket.gethostname())
+        if ip.startswith("127."):
+            interfaces = [
+                "eth0",
+                "eth1",
+                "eth2",
+                "wlan0",
+                "wlan1",
+                "wifi0",
+                "ath0",
+                "ath1",
+                "ppp0",
+                ]
+            for ifname in interfaces:
+                try:
+                    ip = get_interface_ip(ifname, self.__udp_socket)
+                    break
+                except IOError:
+                    pass
+        return ip
+
+
     def __init__(self, port_number, recv_timeout):
         self.port_number = port_number
         self.recv_timeout = recv_timeout
-        self.ip = socket.gethostbyname(socket.gethostname())
         self.server_list = []
-
-        logging.info("My ip is {0}".format(self.ip))
 
         self.__setup_udp()
         self.__setup_zmq_socket()
         self.__setup_poller()
+
+        self.ip = self.__get_ip()
+        logging.info("My ip is {0}".format(self.ip))
 
         logging.info("Waiting for connection on port {0}".format(port_number))
 
@@ -74,6 +104,11 @@ class Client:
 
         logging.info("New server list: {0}".format(self.server_list))
 
+        if None in self.server_list:
+            self.server_list.remove(None)
+
+        return self.server_list
+
     def __send_message(self, json_msg):
         try:
             self.__zmq_socket.send_json(json.dumps(json_msg), zmq.NOBLOCK)
@@ -89,22 +124,6 @@ class Client:
         else:
             raise TimeoutError
 
-    def __exchange_data(self):
-        i = 0
-        while True:
-            if i == 10:
-                return False
-            self.__send_message({"type": "message{0}".format(i)})
-
-            try:
-                json_msg = self.__receive_message()
-                print(json_msg)
-            except TimeoutError:
-                logging.error("Server is not responding!")
-                return False
-
-            i += 1
-
     def __handle_message(self, json_msg):
         if json_msg["type"] == "invalid_token":
             logging.error("Wrong login or password!")
@@ -117,6 +136,8 @@ class Client:
         elif json_msg["type"] == "invalid_request":
             logging.error("Invalid response!")
             return False
+        elif json_msg["type"] == "screenshot":
+            return json_msg["image"]
         else:
             logging.error("Invalid server message!")
             return False
@@ -133,15 +154,16 @@ class Client:
     def __abort(self):
         logging.error("Server is not responding!")
         self.__disconnect()
+        raise TimeoutError
 
     def connect_to_server(self, address, login, passwd):
         self.__connect_to(address)
 
         # Authenticate client
         logging.info("Sending token")
-        if not self.__send_message({"type" : "estimate_connection",
-                             "token" : hashlib.md5((login + "salt" + passwd).encode()).hexdigest(),
-                             "ip" : self.ip}):
+        if not self.__send_message({"type": "estimate_connection",
+                             "token": hashlib.md5((login + "salt" + passwd).encode()).hexdigest(),
+                             "ip": self.ip}):
             self.__abort()
 
         try:
@@ -150,50 +172,50 @@ class Client:
             self.__abort()
             return False
 
-        i = 0
-
         # Get authentication report
-        if self.__handle_message(json_msg):
-            while True:
-                if i > 10:
-                    break
+        return self.__handle_message(json_msg)
 
-                if not self.__send_message({"type": "click_mouse",
-                                            "x":20,
-                                            "y":75}):
-                    self.__abort()
+    def disconnect(self):
+        self.__disconnect()
 
-                # Get response
-                try:
-                    json_msg = self.__receive_message()
-                except TimeoutError:
-                    self.__abort()
-                    break
+    def recieve_screenshot(self):
+        if not self.__send_message({"type": "request_screenshot"}):
+            self.__abort()
 
-                if not self.__handle_message(json_msg):
-                    break
+        try:
+            json_msg = self.__receive_message()
+        except TimeoutError:
+            self.__abort()
+            return False
 
-                i += 1
+        return self.__handle_message(json_msg)
 
-def main():
-    logging.basicConfig(filename='client.log',
-                        level=logging.DEBUG,
-                        format='%(asctime)s %(message)s',
-                        datefmt='%m/%d/%Y %I:%M:%S %p')
+    def send_keybord_event(self, key):
+        logging.info("Sending keyboard event. Key {0}".format(key))
+        if not self.__send_message({"type": "keyboard_event",
+                                    "key": key}):
+            self.__abort()
 
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+        try:
+            json_msg = self.__receive_message()
+        except TimeoutError:
+            self.__abort()
+            return False
 
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    root.addHandler(ch)
+        return self.__handle_message(json_msg)
 
-    logging.info("=========== NEW SESSION ===========")
-    c = Client(50000, 3000)
-    c.refresh_server_list()
-    c.connect_to_server(c.server_list[0], "rc_login", "rc_passwd")
+    def send_mouse_event(self, pos_x, pos_y, key):
+        logging.info("Sending mouse event {0};{1};{2}".format(pos_x, pos_y, key))
+        if not self.__send_message({"type": "mouse_event",
+                                    "key": key,
+                                    "x": pos_x,
+                                    "y": pos_y}):
+            self.__abort()
 
-if __name__ == '__main__':
-    main()
+        try:
+            json_msg = self.__receive_message()
+        except TimeoutError:
+            self.__abort()
+            return False
+
+        return self.__handle_message(json_msg)

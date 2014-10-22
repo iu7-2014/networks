@@ -2,15 +2,23 @@
 import logging
 import json
 import sys
+import fcntl
+import struct
 
 import zmq
 from pymouse import PyMouse
+from pykeyboard import PyKeyboard
+
+from PyQt5.QtCore import QBuffer, QByteArray, QIODevice
+from PyQt5.QtWidgets import QApplication
+
 
 class Configuration:
     udp_broadcast_ip = "255.255.255.255"
     udp_presence_message = b"rc client"
     udp_respond_message = b"rc server"
-    password_hash = "00f25bbfdc3c8356a57603990037a979"
+    password_hash = "b884f389d08277b0540e8f0fbfdf3a8c"
+
 
 class Authenticator:
     def __init__(self, hash):
@@ -19,12 +27,30 @@ class Authenticator:
     def authenticate(self, hash):
         return self.hash == hash
 
-class UserInputControl:
+
+class UserIOControl:
     def __init__(self):
         self.__mouse = PyMouse()
+        self.__keyboard = PyKeyboard()
+        self.__app = QApplication([])
+        self.__screen = self.__app.primaryScreen()
 
-    def click(self, x, y):
-        self.__mouse.click(x, y)
+    def click(self, x, y, button=1):
+        self.__mouse.click(x, y, button)
+
+    def press_key(self, key):
+        self.__keyboard.press_key(key)
+
+    def take_screenshot(self):
+        byte_array = QByteArray()
+        buffer = QBuffer(byte_array)
+        buffer.open(QIODevice.WriteOnly)
+
+        image = self.__screen.grabWindow(QApplication.desktop().winId())
+        image.save(buffer, "PNG")
+
+        return str(byte_array.toBase64())[1:]
+
 
 class Server:
     def __setup_udp(self):
@@ -43,20 +69,47 @@ class Server:
         self.__poller = zmq.Poller()
         self.__poller.register(self.__zmq_socket, zmq.POLLIN)
 
+    def __get_ip(self):
+        def get_interface_ip(ifname, s):
+            return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
+                                    ifname[:15].encode("utf-8")))[20:24])
+
+        ip = socket.gethostbyname(socket.gethostname())
+        if ip.startswith("127."):
+            interfaces = [
+                "eth0",
+                "eth1",
+                "eth2",
+                "wlan0",
+                "wlan1",
+                "wifi0",
+                "ath0",
+                "ath1",
+                "ppp0",
+                ]
+            for ifname in interfaces:
+                try:
+                    ip = get_interface_ip(ifname, self.__udp_socket)
+                    break
+                except IOError:
+                    pass
+        return ip
+
     def __init__(self, port_number, recv_timeout):
         self.port_number = port_number
         self.recv_timeout = recv_timeout
-        self.ip = socket.gethostbyname(socket.gethostname())
+
         self.__authenticated = False
 
-        logging.info("My ip is {0}".format(self.ip))
-
         self.__authenticator = Authenticator(Configuration.password_hash)
-        self.__user_input_control = UserInputControl()
+        self.__user_io_control = UserIOControl()
 
         self.__setup_udp()
         self.__setup_zmq_socket()
         self.__setup_poller()
+
+        self.ip = self.__get_ip()
+        logging.info("My ip is {0}".format(self.ip))
 
     def __get_udp_ping(self):
         udp_poller = zmq.Poller()
@@ -113,9 +166,19 @@ class Server:
                 return False
 
         elif self.__authenticated:
-            if json_msg["type"] == "click_mouse":
-                self.__user_input_control.click(json_msg["x"], json_msg["y"])
+            if json_msg["type"] == "mouse_event":
+                self.__user_io_control.click(json_msg["x"], json_msg["y"], json_msg["key"])
                 if not self.__send_message({"type": "done"}):
+                    return self.__abort()
+                return True
+            elif json_msg["type"] == "keyboard_event":
+                self.__user_io_control.press_key(json_msg["key"])
+                if not self.__send_message({"type": "done"}):
+                    return self.__abort()
+                return True
+            elif json_msg["type"] == "request_screenshot":
+                if not self.__send_message({"type": "screenshot",
+                                            "image": self.__user_io_control.take_screenshot()}):
                     return self.__abort()
                 return True
 
@@ -134,6 +197,7 @@ class Server:
                 continue
 
             self.__handle_message(msg)
+
 
 def main():
     logging.basicConfig(filename='server.log', level=logging.DEBUG,

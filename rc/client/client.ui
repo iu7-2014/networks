@@ -1,25 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>DockWidget</class>
- <widget class="QDockWidget" name="DockWidget">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>162</width>
     <height>300</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>Доступные</string>
+  <property name="maximumSize">
+   <size>
+    <width>200</width>
+    <height>1080</height>
+   </size>
   </property>
-  <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
-     <widget class="QListView" name="listView"/>
-    </item>
-   </layout>
-  </widget>
+  <property name="windowTitle">
+   <string>RC</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QPushButton" name="refreshButton">
+     <property name="text">
+      <string>Обновить</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="refreshLabel">
+     <property name="text">
+      <string>Обновление...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Список серверов:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListWidget" name="serverList"/>
+   </item>
+   <item>
+    <widget class="QPushButton" name="connectButton">
+     <property name="text">
+      <string>Присоедениться</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>
