@@ -92,6 +92,7 @@
     <property name="title">
      <string>Сервис</string>
     </property>
+    <addaction name="bullshit_action"/>
    </widget>
    <widget class="QMenu" name="menu_4">
     <property name="title">
@@ -113,6 +114,11 @@
   <action name="help_action">
    <property name="text">
     <string>О Программе</string>
+   </property>
+  </action>
+  <action name="bullshit_action">
+   <property name="text">
+    <string>Отправить неверный запрос</string>
    </property>
   </action>
  </widget>

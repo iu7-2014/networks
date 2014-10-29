@@ -22,6 +22,7 @@ class Widget(QMainWindow, client_form):
         self._graphics_scene.mousePressEvent = self.mouse_pressed
         self.exit_action.triggered.connect(self.exit)
         self.help_action.triggered.connect(self.show_help)
+        self.bullshit_action.triggered.connect(self.send_incorrect_message)
         self.connected = False
 
     def exit(self):
@@ -33,12 +34,20 @@ class Widget(QMainWindow, client_form):
 
     def show_help(self):
         mb = QMessageBox.information(self, "О программе",
-                                  "Программа удаленного управления рабочим столом.\n"+
-                                  "\nСоздатели:\nРоман Инфлянскас (МГТУ. ИУ7-71)\n"+
-                                  "Абакумкин Алексей (МГТУ ИУ7-72)")
+                                     "Программа удаленного управления рабочим столом.\n"+
+                                     "\nСоздатели:\nРоман Инфлянскас (МГТУ. ИУ7-71)\n"+
+                                     "Абакумкин Алексей (МГТУ ИУ7-72)")
 
-    def refresh(self):
-        self.serverList.clear()
+    def send_incorrect_message(self):
+        if self.connected:
+            try:
+                self.client.send_incorrect_message()
+            except:
+                mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+                self.revert()
+
+def refresh(self):
+    self.serverList.clear()
         self.refreshLabel.setVisible(True)
         self.repaint()
 
@@ -70,8 +79,8 @@ class Widget(QMainWindow, client_form):
         except TimeoutError:
             mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
 
-    def revert(self):
-        self.client.disconnect()
+def revert(self):
+    self.client.disconnect()
         self._graphics_scene.clear()
         self.connectButton.setText("Присоедениться")
         self.connected = False
@@ -92,11 +101,11 @@ class Widget(QMainWindow, client_form):
 
             self._graphics_scene.clear()
             self._graphics_scene.addPixmap(self.pm)
-            self.update()
+        self.update()
 
-    def mouse_pressed(self, event):
-        if self.connected:
-            x = int(event.scenePos().x())
+def mouse_pressed(self, event):
+    if self.connected:
+        x = int(event.scenePos().x())
             y = int(event.scenePos().y())
 
             button = event.button()
@@ -105,6 +114,6 @@ class Widget(QMainWindow, client_form):
 
             try:
                 self.client.send_mouse_event(x, y, button)
-            except:
-                mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+        except:
+            mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
                 self.revert()

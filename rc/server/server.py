@@ -190,7 +190,7 @@ class Server:
                     return self.__abort()
                 return True
 
-        logging.error("{0}\tНеизвестное сообщение от клиента".format(self.client_address[0]))
+        logging.error("{0}\tНеизвестное сообщение от клиента: \t{1}".format(self.client_address[0], json_msg))
         if not self.__send_message({"type": "invalid_response"}):
             return self.__abort()
 
