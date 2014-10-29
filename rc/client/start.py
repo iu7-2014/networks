@@ -18,7 +18,7 @@ def setup_logging_system():
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    logging.info("=========== NEW SESSION ===========")
+    logging.info("Старт новой сессии")
 
 if __name__ == "__main__":
     setup_logging_system()

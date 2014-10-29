@@ -58,7 +58,7 @@ class Server:
         self.__udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.__udp_socket.bind(("", self.port_number))
 
-        logging.info("UDP socket bound on port {0}".format(self.port_number))
+        logging.info("{0}\tПрослушивание UDP сокета. Порт:\t{1}".format(self.ip, self.port_number))
 
     def __setup_zmq_socket(self):
         self.__context = zmq.Context()
@@ -74,25 +74,26 @@ class Server:
             return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
                                     ifname[:15].encode("utf-8")))[20:24])
 
-        ip = socket.gethostbyname(socket.gethostname())
-        if ip.startswith("127."):
-            interfaces = [
-                "eth0",
-                "eth1",
-                "eth2",
-                "wlan0",
-                "wlan1",
-                "wifi0",
-                "ath0",
-                "ath1",
-                "ppp0",
-                ]
-            for ifname in interfaces:
-                try:
-                    ip = get_interface_ip(ifname, self.__udp_socket)
-                    break
-                except IOError:
-                    pass
+        #ip = socket.gethostbyname(socket.gethostname())
+        #if ip.startswith("127."):
+        interfaces = [
+            "eth0",
+            "eth1",
+            "eth2",
+            "wlan0",
+            "wlan1",
+            "wifi0",
+            "ath0",
+            "ath1",
+            "ppp0",
+            ]
+        for ifname in interfaces:
+            try:
+                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                ip = get_interface_ip(ifname, udp_socket)
+                break
+            except IOError:
+                pass
         return ip
 
     def __init__(self, port_number, recv_timeout):
@@ -104,12 +105,11 @@ class Server:
         self.__authenticator = Authenticator(Configuration.password_hash)
         self.__user_io_control = UserIOControl()
 
+        self.ip = self.__get_ip()
+
         self.__setup_udp()
         self.__setup_zmq_socket()
         self.__setup_poller()
-
-        self.ip = self.__get_ip()
-        logging.info("My ip is {0}".format(self.ip))
 
     def __get_udp_ping(self):
         udp_poller = zmq.Poller()
@@ -118,11 +118,12 @@ class Server:
         events = dict(udp_poller.poll(self.recv_timeout))
 
         if self.__udp_socket.fileno() in events:
-            msg, address = self.__udp_socket.recvfrom(10)
+            msg, self.client_address = self.__udp_socket.recvfrom(10)
 
             if msg == Configuration.udp_presence_message:
-                logging.info("Ping from client {0}. Sending response".format(address[0]))
+                logging.info("{0}\tЗапрос списка серверов".format(self.client_address[0]))
                 self.__send_udp_ping()
+                logging.info("{0}\tОтправка ответа о своем присутсвии.\tУспешно".format(self.ip))
 
     def __send_udp_ping(self):
         self.__udp_socket.sendto(Configuration.udp_respond_message,
@@ -145,28 +146,35 @@ class Server:
             raise TimeoutError
 
     def __abort(self):
-        logging.error("Client stop responding")
+        logging.error("{0}\tРазрыв соединения с клиентом".format(self.client_address[0]))
         self.__authenticated = False
         return False
 
     def __handle_message(self, json_msg):
-        if json_msg["type"] == "estimate_connection":
-            logging.info("Client {0} is trying to connect".format(json_msg["ip"]))
+        if json_msg["type"] == "close_connection":
+            logging.info("{0}\tЗавершение соединения".format(json_msg["ip"]))
+            self.__authenticated = False
+            return True
+        elif json_msg["type"] == "estimate_connection":
+            logging.info("{0}\tУстанавка соединения".format(json_msg["ip"]))
 
             self.__authenticated = self.__authenticator.authenticate(json_msg["token"])
             if self.__authenticated:
                 if not self.__send_message({"type": "auth_complete"}):
                     return self.__abort()
-                logging.info("Authentication complete!")
+                logging.info("{0}\tАутентификация успешно завершена".format(self.client_address[0]))
                 return True
             else:
                 if not self.__send_message({"type": "invalid_token"}):
                     return self.__abort()
-                logging.info("Invalid token")
+                logging.info("{0}\tНеправильный логин или пароль".format(self.client_address[0]))
                 return False
-
         elif self.__authenticated:
             if json_msg["type"] == "mouse_event":
+                logging.info("{0}\tЗапрос на клик курсором\t{1},{2},{3}".format(self.client_address[0],
+                                                                                json_msg["x"],
+                                                                                json_msg["y"],
+                                                                                json_msg["key"]))
                 self.__user_io_control.click(json_msg["x"], json_msg["y"], json_msg["key"])
                 if not self.__send_message({"type": "done"}):
                     return self.__abort()
@@ -182,7 +190,7 @@ class Server:
                     return self.__abort()
                 return True
 
-        logging.error("Invalid client response!")
+        logging.error("{0}\tНеизвестное сообщение от клиента".format(self.client_address[0]))
         if not self.__send_message({"type": "invalid_response"}):
             return self.__abort()
 
@@ -193,7 +201,9 @@ class Server:
 
             try:
                 msg = self.__receive_message()
-            except TimeoutError:		
+            except TimeoutError:
+                if self.__authenticated:
+                    self.__abort()
                 continue
 
             self.__handle_message(msg)
@@ -213,8 +223,8 @@ def main():
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    logging.info("=========== NEW SESSION ===========")
-    s = Server(50000, 0)
+    logging.info("Старт новой сессии")
+    s = Server(50000, 200)
     s.run()
 
 

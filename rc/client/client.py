@@ -13,7 +13,7 @@ class Configuration:
     udp_broadcast_ip = "255.255.255.255"
     udp_presence_message = b"rc client"
     udp_respond_message = b"rc server"
-    refresh_server_list_counts = 5
+    refresh_server_list_counts = 2
 
 
 class Client:
@@ -22,7 +22,7 @@ class Client:
         self.__udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.__udp_socket.bind(("", self.port_number - 1))
 
-        logging.info("UDP socket bound on port {0}".format(self.port_number - 1))
+        logging.info("{0}\tПрослушивание UDP сокета. Порт:\t{1}".format(self.ip, self.port_number - 1))
 
     def __setup_zmq_socket(self):
         self.__context = zmq.Context()
@@ -37,25 +37,26 @@ class Client:
             return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
                                     ifname[:15].encode("utf-8")))[20:24])
 
-        ip = socket.gethostbyname(socket.gethostname())
-        if ip.startswith("127."):
-            interfaces = [
-                "eth0",
-                "eth1",
-                "eth2",
-                "wlan0",
-                "wlan1",
-                "wifi0",
-                "ath0",
-                "ath1",
-                "ppp0",
-                ]
-            for ifname in interfaces:
-                try:
-                    ip = get_interface_ip(ifname, self.__udp_socket)
-                    break
-                except IOError:
-                    pass
+        #ip = socket.gethostbyname(socket.gethostname())
+        # if ip.startswith("127."):
+        interfaces = [
+            "eth0",
+            "eth1",
+            "eth2",
+            "wlan0",
+            "wlan1",
+            "wifi0",
+            "ath0",
+            "ath1",
+            "ppp0",
+            ]
+        for ifname in interfaces:
+            try:
+                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                ip = get_interface_ip(ifname, udp_socket)
+                break
+            except IOError:
+                pass
         return ip
 
 
@@ -64,14 +65,11 @@ class Client:
         self.recv_timeout = recv_timeout
         self.server_list = []
 
+        self.ip = self.__get_ip()
+
         self.__setup_udp()
         self.__setup_zmq_socket()
         self.__setup_poller()
-
-        self.ip = self.__get_ip()
-        logging.info("My ip is {0}".format(self.ip))
-
-        logging.info("Waiting for connection on port {0}".format(port_number))
 
     def __send_udp_ping(self):
         self.__udp_socket.sendto(Configuration.udp_presence_message,
@@ -102,7 +100,7 @@ class Client:
             time.sleep(1)
             self.__add_server(self.__receive_upd_ping())
 
-        logging.info("New server list: {0}".format(self.server_list))
+        logging.info("{0}\tПолучение нового списка серверов\t{1}".format(self.ip, self.server_list))
 
         if None in self.server_list:
             self.server_list.remove(None)
@@ -126,33 +124,35 @@ class Client:
 
     def __handle_message(self, json_msg):
         if json_msg["type"] == "invalid_token":
-            logging.error("Wrong login or password!")
+            logging.error("{0}\tПопытка аутентификации\t Неудача. Неверный логин или пароль".format(self.ip))
             return False
         elif json_msg["type"] == "auth_complete":
-            logging.info("Authentication complete")
+            logging.error("{0}\tПопытка аутентификации\t Успех".format(self.ip))
             return True
         elif json_msg["type"] == "done":
             return True
         elif json_msg["type"] == "invalid_request":
-            logging.error("Invalid response!")
+            logging.error("{0}\tНеверный запрос".format(self.ip))
             return False
         elif json_msg["type"] == "screenshot":
             return json_msg["image"]
         else:
-            logging.error("Invalid server message!")
+            logging.error("{0}\tНеверный запрос".format(self.connected_address))
             return False
 
     def __connect_to(self, address):
         self.connected_address = address
-        logging.info("Connect to {0}:{1}".format(address[0], address[1]))
         self.__zmq_socket.connect("tcp://{0}:{1}".format(address[0], address[1]))
+        logging.info("{0}\tСоединение с {1}:{2}".format(self.ip, address[0], address[1]))
 
     def __disconnect(self):
-        logging.info("Disconnect from {0}:{1}".format(self.connected_address[0], self.connected_address[1]))
+        self.__send_message({"type": "close_connection",
+                             "ip": self.ip})
         self.__zmq_socket.disconnect("tcp://{0}:{1}".format(self.connected_address[0], self.connected_address[1]))
+        logging.info("{0}\tОтключение от {1}:{2}".format(self.ip, self.connected_address[0], self.connected_address[1]))
 
     def __abort(self):
-        logging.error("Server is not responding!")
+        logging.error("{0}:{1}\tСервер перестал отвечать".format(self.connected_address[0], self.connected_address[1]))
         self.__disconnect()
         raise TimeoutError
 
@@ -160,7 +160,6 @@ class Client:
         self.__connect_to(address)
 
         # Authenticate client
-        logging.info("Sending token")
         if not self.__send_message({"type": "estimate_connection",
                              "token": hashlib.md5((login + "salt" + passwd).encode()).hexdigest(),
                              "ip": self.ip}):
@@ -190,22 +189,22 @@ class Client:
 
         return self.__handle_message(json_msg)
 
-    def send_keybord_event(self, key):
-        logging.info("Sending keyboard event. Key {0}".format(key))
-        if not self.__send_message({"type": "keyboard_event",
-                                    "key": key}):
-            self.__abort()
-
-        try:
-            json_msg = self.__receive_message()
-        except TimeoutError:
-            self.__abort()
-            return False
+    # def send_keybord_event(self, key):
+    #     logging.info("Sending keyboard event. Key {0}".format(key))
+    #     if not self.__send_message({"type": "keyboard_event",
+    #                                 "key": key}):
+    #         self.__abort()
+    #
+    #     try:
+    #         json_msg = self.__receive_message()
+    #     except TimeoutError:
+    #         self.__abort()
+    #         return False
 
         return self.__handle_message(json_msg)
 
     def send_mouse_event(self, pos_x, pos_y, key):
-        logging.info("Sending mouse event {0};{1};{2}".format(pos_x, pos_y, key))
+        logging.info("{0}\tОтправка события мыши:\t{1};{2};{3}".format(self.ip, pos_x, pos_y, key))
         if not self.__send_message({"type": "mouse_event",
                                     "key": key,
                                     "x": pos_x,
