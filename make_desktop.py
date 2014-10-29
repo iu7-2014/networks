@@ -4,7 +4,7 @@ import jinja2
 
 destop_file = os.path.expanduser('~/Desktop/')
 program = sys.argv[1]
-program_dir = sys.argv[2]
+program_dir = os.path.join(sys.argv[2], 'rc/' + program)
 d = {'server': 'server.py', 'client': 'start.py'}
 
 desktop = jinja2.Template("""
