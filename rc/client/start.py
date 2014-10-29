@@ -24,5 +24,5 @@ if __name__ == "__main__":
     setup_logging_system()
     app = QApplication(sys.argv)
     main_window = Widget(None)
-    main_window.show()
+    main_window.showMaximized()
     app.exec_()
