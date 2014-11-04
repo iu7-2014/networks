@@ -32,8 +32,8 @@ class Widget(QMainWindow, client_form):
     def exit(self):
         if self.connected:
             self.revert()
+            self.client.disconnect()
 
-        self.close()
         self.close()
 
     def show_help(self):
@@ -46,6 +46,7 @@ class Widget(QMainWindow, client_form):
             "(c) 2014, Москва, МГТУ им. Н. Э. Баумана")
 
     def critical(self, msg, log=True):
+        self.revert()
         QMessageBox.critical(self, "Ошибка", msg)
         if log:
             logging.error("{ip}\t{msg}\tОшибка".format(ip=self.client.ip, msg=msg))
@@ -57,7 +58,6 @@ class Widget(QMainWindow, client_form):
             except:
                 # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
                 self.critical("Сервер перестал отвечать")
-                self.revert()
 
     def refresh(self):
         self.serverList.clear()
@@ -71,10 +71,8 @@ class Widget(QMainWindow, client_form):
 
     def connect(self):
         if self.connected:
+            self.revert()
             self.client.disconnect()
-            self._graphics_scene.clear()
-            self.connectButton.setText("Присоединиться")
-            self.connected = False
             return
 
         try:
@@ -102,7 +100,6 @@ class Widget(QMainWindow, client_form):
             # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
 
     def revert(self):
-        self.client.disconnect()
         self._graphics_scene.clear()
         self.connectButton.setText("Присоединиться")
         self.connected = False
@@ -114,7 +111,6 @@ class Widget(QMainWindow, client_form):
             except TimeoutError:
                 self.critical("Сервер перестал отвечать")
                 # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
-                self.revert()
                 return
 
 

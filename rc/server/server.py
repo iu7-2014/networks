@@ -106,6 +106,8 @@ class Server:
         self.__user_io_control = UserIOControl()
 
         self.ip = self.__get_ip()
+        self.clinet_address = (None, None)
+
         logging.info("{0}\tСтарт новой сессии\tУспешно".format(self.ip))
 
         self.__setup_udp()
@@ -153,14 +155,16 @@ class Server:
 
     def __handle_message(self, json_msg):
         if json_msg["type"] == "close_connection":
-            logging.info("{0}\tЗавершение соединения".format(json_msg["ip"]))
-            self.__authenticated = False
+            if self.__authenticated:
+                logging.info("{0}\tЗавершение соединения".format(json_msg["ip"]))
+                self.__authenticated = False
             return True
         elif json_msg["type"] == "estimate_connection":
             logging.info("{0}\tПолучение запроса на соединение\tУспешно".format(json_msg["ip"]))
 
             self.__authenticated = self.__authenticator.authenticate(json_msg["token"])
             if self.__authenticated:
+                self.client_address = (json_msg["ip"], self.client_address[1])
                 if not self.__send_message({"type": "auth_complete"}):
                     return self.__abort()
                 logging.info("{0}\tЗавершение аутентификации\tУспешно".format(self.client_address[0]))

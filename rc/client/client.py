@@ -1,4 +1,4 @@
-﻿import socket
+import socket
 import json
 import hashlib
 import logging
@@ -138,7 +138,7 @@ class Client:
         elif json_msg["type"] == "screenshot":
             return json_msg["image"]
         else:
-            logging.error("{0}\tНеверный запрос".format(self.connected_address))
+            logging.error("{0}\tНеверный запрос".format(self.connected_address[0]))
             return False
 
     def __connect_to(self, address):
