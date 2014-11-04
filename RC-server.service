@@ -1,0 +1,14 @@
+[Unit]
+Description=RC сервер
+After=network.target
+
+[Service]
+ExecStart=/bin/sh -c 'export DISPLAY=:0; /usr/bin/python3 /data/romas/bmstu/term_project/07_networks/rc/server/server.py'
+WorkingDirectory=/data/romas/bmstu/term_project/07_networks/rc/server
+User=romas
+Group=users
+# TimeoutStartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
