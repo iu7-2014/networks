@@ -106,6 +106,7 @@ class Server:
         self.__user_io_control = UserIOControl()
 
         self.ip = self.__get_ip()
+        logging.info("{0}\tСтарт новой сессии\tУспешно".format(self.ip))
 
         self.__setup_udp()
         self.__setup_zmq_socket()
@@ -123,7 +124,7 @@ class Server:
             if msg == Configuration.udp_presence_message:
                 logging.info("{0}\tЗапрос списка серверов".format(self.client_address[0]))
                 self.__send_udp_ping()
-                logging.info("{0}\tОтправка ответа о своем присутсвии.\tУспешно".format(self.ip))
+                logging.info("{0}\tОтправка ответа о своем присутсвии\tУспешно".format(self.ip))
 
     def __send_udp_ping(self):
         self.__udp_socket.sendto(Configuration.udp_respond_message,
@@ -156,18 +157,18 @@ class Server:
             self.__authenticated = False
             return True
         elif json_msg["type"] == "estimate_connection":
-            logging.info("{0}\tУстанавка соединения".format(json_msg["ip"]))
+            logging.info("{0}\tПолучение запроса на соединение\tУспешно".format(json_msg["ip"]))
 
             self.__authenticated = self.__authenticator.authenticate(json_msg["token"])
             if self.__authenticated:
                 if not self.__send_message({"type": "auth_complete"}):
                     return self.__abort()
-                logging.info("{0}\tАутентификация успешно завершена".format(self.client_address[0]))
+                logging.info("{0}\tЗавершение аутентификации\tУспешно".format(self.client_address[0]))
                 return True
             else:
                 if not self.__send_message({"type": "invalid_token"}):
                     return self.__abort()
-                logging.info("{0}\tНеправильный логин или пароль".format(self.client_address[0]))
+                logging.info("{0}\tЗавершение аутентификации\tОшибка\tПричина: неправильный логин или пароль".format(self.client_address[0]))
                 return False
         elif self.__authenticated:
             if json_msg["type"] == "mouse_event":
@@ -223,7 +224,6 @@ def main():
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    logging.info("Старт новой сессии")
     s = Server(50000, 200)
     s.run()
 

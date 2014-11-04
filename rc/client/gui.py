@@ -1,3 +1,4 @@
+import logging
 import webbrowser
 
 from PyQt5 import uic
@@ -44,12 +45,18 @@ class Widget(QMainWindow, client_form):
             "Роман Инфлянскас, ИУ7-71\n"
             "(c) 2014, Москва, МГТУ им. Н. Э. Баумана")
 
+    def critical(self, msg, log=True):
+        QMessageBox.critical(self, "Ошибка", msg)
+        if log:
+            logging.error("{ip}\t{msg}\tОшибка".format(ip=self.client.ip, msg=msg))
+
     def send_incorrect_message(self):
         if self.connected:
             try:
                 self.client.send_incorrect_message()
             except:
-                mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+                # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
+                self.critical("Сервер перестал отвечать")
                 self.revert()
 
     def refresh(self):
@@ -75,15 +82,24 @@ class Widget(QMainWindow, client_form):
             if login_ok:
                 passwd, password_ok = QInputDialog.getText(self, 'Пароль', 'Введите пароль:', 2)
                 if password_ok:
-                    address = self.serverList.currentItem().text().split(":")
+                    server_item = self.serverList.currentItem()
+                    try:
+                        address = server_item.text().split(":")
+                    except:
+                        # server_item = self.serverList.findItems('', 0)[0]
+                        self.serverList.setCurrentRow(0)
+                        server_item = self.serverList.currentItem()
+                        address = server_item.text().split(":")
                     if self.client.connect_to_server(address, login, passwd):
                         self.connectButton.setText("Отключиться")
                         self.connected = True
                     else:
-                        mb = QMessageBox.critical(self, "Ошибка", "Неверный логин или пароль!")
+                        self.critical("Неверный логин или пароль!", log=False)
+                        # mb = QMessageBox.critical(self, "Ошибка", "Неверный логин или пароль!")
 
         except TimeoutError:
-            mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+            self.critical("Сервер перестал отвечать")
+            # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
 
     def revert(self):
         self.client.disconnect()
@@ -96,7 +112,8 @@ class Widget(QMainWindow, client_form):
             try:
                 self.image_base_64 = self.client.recieve_screenshot()
             except TimeoutError:
-                mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+                self.critical("Сервер перестал отвечать")
+                # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
                 self.revert()
                 return
 
@@ -121,5 +138,6 @@ class Widget(QMainWindow, client_form):
             try:
                 self.client.send_mouse_event(x, y, button)
             except:
-                mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+                self.critical("Сервер перестал отвечать")
+                # mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать")
                 self.revert()

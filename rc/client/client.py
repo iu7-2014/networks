@@ -56,7 +56,7 @@ class Client:
                 break
             except IOError:
                 pass
-         
+
         return ip
 
 
@@ -66,6 +66,7 @@ class Client:
         self.server_list = []
 
         self.ip = self.__get_ip()
+        logging.info("{0}\tСтарт новой сессии\tУспешно".format(self.ip))
 
         self.__setup_udp()
         self.__setup_zmq_socket()
@@ -124,10 +125,10 @@ class Client:
 
     def __handle_message(self, json_msg):
         if json_msg["type"] == "invalid_token":
-            logging.error("{0}\tПопытка аутентификации\t Неудача. Неверный логин или пароль".format(self.ip))
+            logging.error("{0}\tАутентификация\tНеудача\tПричина: неверный логин или пароль".format(self.ip))
             return False
         elif json_msg["type"] == "auth_complete":
-            logging.error("{0}\tПопытка аутентификации\t Успех".format(self.ip))
+            logging.info("{0}\tАутентификация\tУспешно".format(self.ip))
             return True
         elif json_msg["type"] == "done":
             return True
@@ -143,7 +144,7 @@ class Client:
     def __connect_to(self, address):
         self.connected_address = address
         self.__zmq_socket.connect("tcp://{0}:{1}".format(address[0], address[1]))
-        logging.info("{0}\tСоединение с {1}:{2}".format(self.ip, address[0], address[1]))
+        logging.info("{0}\tОтправка запроса на подключение к {1}:{2}\tУспешно".format(self.ip, address[0], address[1]))
 
     def __disconnect(self):
         self.__send_message({"type": "close_connection",
@@ -152,7 +153,7 @@ class Client:
         logging.info("{0}\tОтключение от {1}:{2}".format(self.ip, self.connected_address[0], self.connected_address[1]))
 
     def __abort(self):
-        logging.error("{0}:{1}\tСервер перестал отвечать".format(self.connected_address[0], self.connected_address[1]))
+        logging.error("{0}:{1}\tСервер перестал отвечать\tОшибка".format(self.connected_address[0], self.connected_address[1]))
         self.__disconnect()
         raise TimeoutError
 
@@ -210,24 +211,24 @@ class Client:
                                    "x": pos_x,
                                    "y": pos_y}):
             self.__abort()
-                                   
+
         try:
             json_msg = self.__receive_message()
         except TimeoutError:
             self.__abort()
             return False
-                                   
+
         return self.__handle_message(json_msg)
-    
+
     def send_incorrect_message(self):
         logging.info("{0}\tОтправка некорректного события".format(self.ip))
         if not self.__send_message({"type": "some_event"}):
             self.__abort()
-        
+
         try:
             json_msg = self.__receive_message()
         except TimeoutError:
             self.__abort()
             return False
-        
+
         return self.__handle_message(json_msg)
