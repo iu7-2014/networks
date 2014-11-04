@@ -33,10 +33,13 @@ class Widget(QMainWindow, client_form):
         self.close()
 
     def show_help(self):
-        mb = QMessageBox.information(self, "О программе",
-                                     "Программа удаленного управления рабочим столом.\n"+
-                                     "\nСоздатели:\nРоман Инфлянскас (МГТУ. ИУ7-71)\n"+
-                                     "Абакумкин Алексей (МГТУ ИУ7-72)")
+        mb = QMessageBox.information(
+            self, "О программе",
+            "Программа удаленного управления рабочим столом.\n\n"
+            "Создатели:\n"
+            "Алексей Абакумкин, ИУ7-72\n"
+            "Роман Инфлянскас, ИУ7-71\n"
+            "(c) 2014, Москва, МГТУ им. Н. Э. Баумана")
 
     def send_incorrect_message(self):
         if self.connected:
@@ -60,7 +63,7 @@ class Widget(QMainWindow, client_form):
         if self.connected:
             self.client.disconnect()
             self._graphics_scene.clear()
-            self.connectButton.setText("Присоедениться")
+            self.connectButton.setText("Присоединиться")
             self.connected = False
             return
 
@@ -82,7 +85,7 @@ class Widget(QMainWindow, client_form):
     def revert(self):
         self.client.disconnect()
         self._graphics_scene.clear()
-        self.connectButton.setText("Присоедениться")
+        self.connectButton.setText("Присоединиться")
         self.connected = False
 
     def paintEvent(self, QPaintEvent):

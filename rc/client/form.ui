@@ -57,7 +57,7 @@
       <item>
        <widget class="QPushButton" name="connectButton">
         <property name="text">
-         <string>Присоедениться</string>
+         <string>Присоединиться</string>
         </property>
        </widget>
       </item>
@@ -113,7 +113,7 @@
   </action>
   <action name="help_action">
    <property name="text">
-    <string>О Программе</string>
+    <string>О программе</string>
    </property>
   </action>
   <action name="bullshit_action">
