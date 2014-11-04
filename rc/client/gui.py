@@ -1,3 +1,5 @@
+import webbrowser
+
 from PyQt5 import uic
 from PyQt5.QtWidgets import QMainWindow, QInputDialog, QGraphicsScene, QMessageBox, QDialog
 from PyQt5.QtGui import QPixmap, QKeySequence
@@ -23,6 +25,7 @@ class Widget(QMainWindow, client_form):
         self.exit_action.triggered.connect(self.exit)
         self.help_action.triggered.connect(self.show_help)
         self.bullshit_action.triggered.connect(self.send_incorrect_message)
+        self.viewlog_action.triggered.connect(lambda: webbrowser.open('./client.log'))
         self.connected = False
 
     def exit(self):

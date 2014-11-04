@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>RC</string>
+   <string>RC клиент</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -87,6 +87,7 @@
     <property name="title">
      <string>Правка</string>
     </property>
+    <addaction name="viewlog_action"/>
    </widget>
    <widget class="QMenu" name="menu_3">
     <property name="title">
@@ -114,6 +115,11 @@
   <action name="help_action">
    <property name="text">
     <string>О программе</string>
+   </property>
+  </action>
+  <action name="viewlog_action">
+   <property name="text">
+    <string>Просмотреть журнал</string>
    </property>
   </action>
   <action name="bullshit_action">
