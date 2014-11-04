@@ -46,8 +46,8 @@ class Widget(QMainWindow, client_form):
                 mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
                 self.revert()
 
-def refresh(self):
-    self.serverList.clear()
+    def refresh(self):
+        self.serverList.clear()
         self.refreshLabel.setVisible(True)
         self.repaint()
 
@@ -79,8 +79,8 @@ def refresh(self):
         except TimeoutError:
             mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
 
-def revert(self):
-    self.client.disconnect()
+    def revert(self):
+        self.client.disconnect()
         self._graphics_scene.clear()
         self.connectButton.setText("Присоедениться")
         self.connected = False
@@ -101,11 +101,11 @@ def revert(self):
 
             self._graphics_scene.clear()
             self._graphics_scene.addPixmap(self.pm)
-        self.update()
+            self.update()
 
-def mouse_pressed(self, event):
-    if self.connected:
-        x = int(event.scenePos().x())
+    def mouse_pressed(self, event):
+        if self.connected:
+            x = int(event.scenePos().x())
             y = int(event.scenePos().y())
 
             button = event.button()
@@ -114,6 +114,6 @@ def mouse_pressed(self, event):
 
             try:
                 self.client.send_mouse_event(x, y, button)
-        except:
-            mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
+            except:
+                mb = QMessageBox.critical(self, "Ошибка", "Сервер перестал отвечать!")
                 self.revert()

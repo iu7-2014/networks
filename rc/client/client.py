@@ -34,8 +34,7 @@ class Client:
 
     def __get_ip(self):
         def get_interface_ip(ifname, s):
-            return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
-                                                                                ifname[:15].encode("utf-8")))[20:24])
+            return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15].encode("utf-8")))[20:24])
 
         #ip = socket.gethostbyname(socket.gethostname())
         # if ip.startswith("127."):
@@ -50,18 +49,19 @@ class Client:
                       "ath1",
                       "ppp0",
                       ]
-                      for ifname in interfaces:
-                          try:
-                              udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-                                  ip = get_interface_ip(ifname, udp_socket)
-                                      break
-                                          except IOError:
-                                              pass
-                                          return ip
+        for ifname in interfaces:
+            try:
+                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                ip = get_interface_ip(ifname, udp_socket)
+                break
+            except IOError:
+                pass
+         
+        return ip
 
 
-def __init__(self, port_number, recv_timeout):
-    self.port_number = port_number
+    def __init__(self, port_number, recv_timeout):
+        self.port_number = port_number
         self.recv_timeout = recv_timeout
         self.server_list = []
 
@@ -76,8 +76,8 @@ def __init__(self, port_number, recv_timeout):
                                  0,
                                  (Configuration.udp_broadcast_ip, self.port_number))
 
-def __receive_upd_ping(self):
-    udp_poller = zmq.Poller()
+    def __receive_upd_ping(self):
+        udp_poller = zmq.Poller()
         udp_poller.register(self.__udp_socket, zmq.POLLIN)
 
         events = dict(udp_poller.poll(self.recv_timeout))
@@ -86,11 +86,11 @@ def __receive_upd_ping(self):
             if msg == Configuration.udp_respond_message:
                 return address
 
-    return None
+        return None
 
-def __add_server(self, address):
-    if not address in self.server_list:
-        self.server_list.append(address)
+    def __add_server(self, address):
+        if not address in self.server_list:
+            self.server_list.append(address)
 
     def refresh_server_list(self):
         self.server_list = []
@@ -105,7 +105,7 @@ def __add_server(self, address):
         if None in self.server_list:
             self.server_list.remove(None)
 
-return self.server_list
+        return self.server_list
 
     def __send_message(self, json_msg):
         try:
@@ -114,45 +114,45 @@ return self.server_list
         except zmq.error.Again:
             return False
 
-def __receive_message(self):
-    events = dict(self.__poller.poll(self.recv_timeout))
+    def __receive_message(self):
+        events = dict(self.__poller.poll(self.recv_timeout))
         if self.__zmq_socket in events and events[self.__zmq_socket] == zmq.POLLIN:
             msg = self.__zmq_socket.recv_json()
             return json.loads(msg)
-    else:
-        raise TimeoutError
+        else:
+            raise TimeoutError
 
-def __handle_message(self, json_msg):
-    if json_msg["type"] == "invalid_token":
-        logging.error("{0}\tПопытка аутентификации\t Неудача. Неверный логин или пароль".format(self.ip))
+    def __handle_message(self, json_msg):
+        if json_msg["type"] == "invalid_token":
+            logging.error("{0}\tПопытка аутентификации\t Неудача. Неверный логин или пароль".format(self.ip))
             return False
         elif json_msg["type"] == "auth_complete":
             logging.error("{0}\tПопытка аутентификации\t Успех".format(self.ip))
             return True
-    elif json_msg["type"] == "done":
-        return True
+        elif json_msg["type"] == "done":
+            return True
         elif json_msg["type"] == "invalid_request":
             logging.error("{0}\tНеверный запрос".format(self.ip))
             return False
-    elif json_msg["type"] == "screenshot":
-        return json_msg["image"]
+        elif json_msg["type"] == "screenshot":
+            return json_msg["image"]
         else:
             logging.error("{0}\tНеверный запрос".format(self.connected_address))
             return False
 
-def __connect_to(self, address):
-    self.connected_address = address
+    def __connect_to(self, address):
+        self.connected_address = address
         self.__zmq_socket.connect("tcp://{0}:{1}".format(address[0], address[1]))
         logging.info("{0}\tСоединение с {1}:{2}".format(self.ip, address[0], address[1]))
 
     def __disconnect(self):
         self.__send_message({"type": "close_connection",
                             "ip": self.ip})
-                            self.__zmq_socket.disconnect("tcp://{0}:{1}".format(self.connected_address[0], self.connected_address[1]))
-                            logging.info("{0}\tОтключение от {1}:{2}".format(self.ip, self.connected_address[0], self.connected_address[1]))
+        self.__zmq_socket.disconnect("tcp://{0}:{1}".format(self.connected_address[0], self.connected_address[1]))
+        logging.info("{0}\tОтключение от {1}:{2}".format(self.ip, self.connected_address[0], self.connected_address[1]))
 
-def __abort(self):
-    logging.error("{0}:{1}\tСервер перестал отвечать".format(self.connected_address[0], self.connected_address[1]))
+    def __abort(self):
+        logging.error("{0}:{1}\tСервер перестал отвечать".format(self.connected_address[0], self.connected_address[1]))
         self.__disconnect()
         raise TimeoutError
 
@@ -165,17 +165,17 @@ def __abort(self):
                                    "ip": self.ip}):
             self.__abort()
 
-                                   try:
+        try:
             json_msg = self.__receive_message()
-                                   except TimeoutError:
+        except TimeoutError:
             self.__abort()
             return False
 
                                    # Get authentication report
         return self.__handle_message(json_msg)
 
-def disconnect(self):
-    self.__disconnect()
+    def disconnect(self):
+        self.__disconnect()
 
     def recieve_screenshot(self):
         if not self.__send_message({"type": "request_screenshot"}):
@@ -201,19 +201,19 @@ def disconnect(self):
         #         self.__abort()
         #         return False
 
-                return self.__handle_message(json_msg)
+        #return self.__handle_message(json_msg)
 
-def send_mouse_event(self, pos_x, pos_y, key):
-    logging.info("{0}\tОтправка события мыши:\t{1};{2};{3}".format(self.ip, pos_x, pos_y, key))
+    def send_mouse_event(self, pos_x, pos_y, key):
+        logging.info("{0}\tОтправка события мыши:\t{1};{2};{3}".format(self.ip, pos_x, pos_y, key))
         if not self.__send_message({"type": "mouse_event",
                                    "key": key,
                                    "x": pos_x,
                                    "y": pos_y}):
             self.__abort()
                                    
-                                   try:
+        try:
             json_msg = self.__receive_message()
-                                   except TimeoutError:
+        except TimeoutError:
             self.__abort()
             return False
                                    
