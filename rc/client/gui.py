@@ -1,5 +1,6 @@
 import logging
 import webbrowser
+import os
 
 from PyQt5 import uic
 from PyQt5.QtWidgets import QMainWindow, QInputDialog, QGraphicsScene, QMessageBox, QDialog
@@ -26,8 +27,14 @@ class Widget(QMainWindow, client_form):
         self.exit_action.triggered.connect(self.exit)
         self.help_action.triggered.connect(self.show_help)
         self.bullshit_action.triggered.connect(self.send_incorrect_message)
-        self.viewlog_action.triggered.connect(lambda: webbrowser.open('./client.log'))
+        self.viewlog_action.triggered.connect(self.open_log)
         self.connected = False
+
+    def open_log(self):
+        if os.uname().sysname == "Darwin":
+            webbrowser.open("file:///" + os.path.abspath("./client.log"))
+        else:
+            webbrowser.open("./clinet.log")
 
     def exit(self):
         if self.connected:
