@@ -34,7 +34,7 @@ class Widget(QMainWindow, client_form):
         if os.uname().sysname == "Darwin":
             webbrowser.open("file:///" + os.path.abspath("./client.log"))
         else:
-            webbrowser.open("./clinet.log")
+            webbrowser.open("./client.log")
 
     def exit(self):
         if self.connected:
