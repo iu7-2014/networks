@@ -5,6 +5,7 @@ import logging
 import time
 import fcntl
 import struct
+import os
 
 import zmq
 
@@ -33,6 +34,9 @@ class Client:
         self.__poller.register(self.__zmq_socket, zmq.POLLIN)
 
     def __get_ip(self):
+        if os.uname().sysname == "Darwin":
+            return socket.gethostbyname(socket.gethostname())
+
         def get_interface_ip(ifname, s):
             return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15].encode("utf-8")))[20:24])
 
